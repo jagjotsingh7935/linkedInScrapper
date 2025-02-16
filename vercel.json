@@ -1,7 +1,7 @@
 {
     "builds": [
         {
-            "src": "jobApp/wsgi.py",
+            "src": "job/wsgi.py",
             "use": "@vercel/python"
         }
     ],
@@ -12,10 +12,10 @@
         },
         {
             "src": "/(.*)",
-            "dest": "jobApp/wsgi.py"
+            "dest": "job/wsgi.py"
         }
     ],
     "env": {
-        "DJANGO_SETTINGS_MODULE": "jobApp.settings"
+        "DJANGO_SETTINGS_MODULE": "job.settings"
     }
 }
