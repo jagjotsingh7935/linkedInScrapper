@@ -44,6 +44,7 @@ CORS_ALLOW_METHODS = [
     'PUT',
 ]
 
+DEBUG = True
 
 # Application definition
 
