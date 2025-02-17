@@ -1,5 +1,5 @@
 from rest_framework.views import APIView
-from rest_framework.response import Response 
+from rest_framework.response import Response
 from rest_framework import status
 import pandas as pd
 from django.http import HttpResponse
@@ -11,13 +11,6 @@ import math
 from urllib.parse import quote
 from .models import JobListing
 from .serializers import JobListingSerializer
-import os
-from django.conf import settings
-
-# Import Vercel database wrapper from settings
-VERCEL_DEPLOYMENT = os.getenv('VERCEL_DEPLOYMENT', False)
-if VERCEL_DEPLOYMENT:
-    from job.settings import VercelDatabase
 
 def create_linkedin_url(keywords, location):
     """Create LinkedIn search URL with encoded parameters."""
@@ -212,99 +205,68 @@ def get_job_details(job_id, headers):
         
     return job_data
 
+
+
 class JobSearchView(APIView):
     def post(self, request):
+        keywords = request.data.get('keywords')
+        location = request.data.get('location')
+        job_limit = int(request.data.get('job_limit', 100))  # Default to 100 if not provided
+        
+        if not keywords or not location:
+            return Response(
+                {"error": "Both keywords and location are required"}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        if job_limit < 1 or job_limit > 1000:
+            return Response(
+                {"error": "Job limit must be between 1 and 1000"}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        headers = {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
+        }
+        
+        base_url = create_linkedin_url(keywords, location)
+        job_ids = get_job_ids(base_url, headers, job_limit)
+        
+        # Clear existing jobs before adding new ones
+        JobListing.objects.all().delete()
+        
+        jobs_data = []
+        for i, job_id in enumerate(job_ids, 1):
+            print(f"\rProcessing job {i}/{len(job_ids)}", end="")
+            job_data = get_job_details(job_id, headers)
+            if job_data:
+                job_listing = JobListing.objects.create(**job_data)
+                jobs_data.append(job_listing)
+
+        serializer = JobListingSerializer(jobs_data, many=True)
+        return Response(serializer.data)
+    
+    def get(self, request):
         try:
-            keywords = request.data.get('keywords')
-            location = request.data.get('location')
-            job_limit = int(request.data.get('job_limit', 100))
-            
-            if not keywords or not location:
-                return Response(
-                    {"error": "Both keywords and location are required"}, 
-                    status=status.HTTP_400_BAD_REQUEST
-                )
-            
-            if job_limit < 1 or job_limit > 1000:
-                return Response(
-                    {"error": "Job limit must be between 1 and 1000"}, 
-                    status=status.HTTP_400_BAD_REQUEST
-                )
-
-            headers = {
-                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
-            }
-            
-            base_url = create_linkedin_url(keywords, location)
-            job_ids = get_job_ids(base_url, headers, job_limit)
-            
-            def process_jobs():
-                JobListing.objects.all().delete()
-                jobs_data = []
-                
-                for i, job_id in enumerate(job_ids, 1):
-                    print(f"\rProcessing job {i}/{len(job_ids)}", end="")
-                    job_data = get_job_details(job_id, headers)
-                    if job_data:
-                        job_listing = JobListing.objects.create(**job_data)
-                        jobs_data.append(job_listing)
-                
-                return jobs_data
-
-            if VERCEL_DEPLOYMENT:
-                with VercelDatabase():
-                    jobs_data = process_jobs()
-            else:
-                jobs_data = process_jobs()
-
-            serializer = JobListingSerializer(jobs_data, many=True)
+            jobs = JobListing.objects.all()
+            serializer = JobListingSerializer(jobs, many=True)
             return Response(serializer.data)
-            
         except Exception as e:
             return Response(
                 {"error": f"An error occurred: {str(e)}"}, 
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
     
-    def get(self, request):
-        try:
-            if VERCEL_DEPLOYMENT:
-                with VercelDatabase():
-                    jobs = JobListing.objects.all()
-                    serializer = JobListingSerializer(jobs, many=True)
-            else:
-                jobs = JobListing.objects.all()
-                serializer = JobListingSerializer(jobs, many=True)
-                
-            return Response(serializer.data)
-            
-        except Exception as e:
-            return Response(
-                {"error": f"An error occurred: {str(e)}"}, 
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR
-            )
 
 class DownloadCSVView(APIView):
     def get(self, request):
-        try:
-            if VERCEL_DEPLOYMENT:
-                with VercelDatabase():
-                    jobs = JobListing.objects.all()
-                    serializer = JobListingSerializer(jobs, many=True)
-            else:
-                jobs = JobListing.objects.all()
-                serializer = JobListingSerializer(jobs, many=True)
-            
-            df = pd.DataFrame(serializer.data)
-            
-            response = HttpResponse(content_type='text/csv')
-            response['Content-Disposition'] = 'attachment; filename="jobs_data.csv"'
-            
-            df.to_csv(path_or_buf=response, index=False)
-            return response
-            
-        except Exception as e:
-            return Response(
-                {"error": f"An error occurred: {str(e)}"}, 
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR
-            )
+        jobs = JobListing.objects.all()
+        serializer = JobListingSerializer(jobs, many=True)
+        
+        df = pd.DataFrame(serializer.data)
+        
+        response = HttpResponse(content_type='text/csv')
+        response['Content-Disposition'] = 'attachment; filename="jobs_data.csv"'
+        
+        df.to_csv(path_or_buf=response, index=False)
+        return response
