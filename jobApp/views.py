@@ -17,7 +17,7 @@ from django.conf import settings
 # Import Vercel database wrapper from settings
 VERCEL_DEPLOYMENT = os.getenv('VERCEL_DEPLOYMENT', False)
 if VERCEL_DEPLOYMENT:
-    from .settings import VercelDatabase
+    from job.settings import VercelDatabase
 
 def create_linkedin_url(keywords, location):
     """Create LinkedIn search URL with encoded parameters."""
