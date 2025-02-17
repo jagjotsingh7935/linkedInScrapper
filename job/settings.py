@@ -11,6 +11,48 @@ https://docs.djangoproject.com/en/5.1/ref/settings/
 """
 
 from pathlib import Path
+import os
+
+
+VERCEL_DEPLOYMENT = os.getenv('VERCEL_DEPLOYMENT', False)
+
+if VERCEL_DEPLOYMENT:
+    from vercel_blob import BlobServiceClient
+    
+    # Initialize blob client
+    blob_client = BlobServiceClient()
+    
+    class VercelSQLiteStorage:
+        def __init__(self):
+            self.blob_name = 'db.sqlite3'
+            
+        def download_db(self):
+            """Download DB from blob storage"""
+            try:
+                blob = blob_client.download(self.blob_name)
+                with open('db.sqlite3', 'wb') as f:
+                    f.write(blob)
+            except:
+                # If file doesn't exist in blob storage, create new DB
+                pass
+                
+        def upload_db(self):
+            """Upload DB to blob storage"""
+            with open('db.sqlite3', 'rb') as f:
+                blob_client.upload(self.blob_name, f)
+                
+    # Custom database wrapper
+    class VercelDatabase:
+        def __init__(self):
+            self.storage = VercelSQLiteStorage()
+            
+        def __enter__(self):
+            self.storage.download_db()
+            return self
+            
+        def __exit__(self, exc_type, exc_val, exc_tb):
+            if exc_type is None:
+                self.storage.upload_db()
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -50,6 +92,7 @@ INSTALLED_APPS = [
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',
     'corsheaders.middleware.CorsMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -82,13 +125,20 @@ WSGI_APPLICATION = 'job.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/5.1/ref/settings/#databases
 
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+if VERCEL_DEPLOYMENT:
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.sqlite3',
+            'NAME': os.path.join(BASE_DIR, 'db.sqlite3'),
+        }
+    }
+else:
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.sqlite3',
+            'NAME': BASE_DIR / 'db.sqlite3',
     }
 }
-
 
 # Password validation
 # https://docs.djangoproject.com/en/5.1/ref/settings/#auth-password-validators
@@ -125,6 +175,8 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/5.1/howto/static-files/
 
 STATIC_URL = 'static/'
+STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
+
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.1/ref/settings/#default-auto-field
