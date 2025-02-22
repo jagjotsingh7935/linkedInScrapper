@@ -1,9 +1,10 @@
 {
     "builds": [
-    { "src": "manage.py", "use": "@vercel/python" },
-    { "src": "db.sqlite3", "use": "@vercel/static" }
-  ]
-,
+        {
+            "src": "job/wsgi.py",
+            "use": "@vercel/python"
+        }
+    ],
     "routes": [
         {
             "src": "/static/(.*)",
