@@ -10,6 +10,9 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/5.1/ref/settings/
 """
 
+
+import dj_database_url
+
 from pathlib import Path
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -25,7 +28,7 @@ SECRET_KEY = 'django-insecure-xis3_2m-17h8@uu*0bcbf&ei5$kxy=awat*j*e125&#qi-i7$j
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ['.vercel.app',"localhost", "127.0.0.1"]
+ALLOWED_HOSTS = ['*',"localhost", "127.0.0.1"]
 CORS_ALLOWED_ORIGINS = ["http://localhost:5173"]
 
 CORS_ALLOW_CREDENTIALS = True
@@ -83,6 +86,12 @@ WSGI_APPLICATION = 'job.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/5.1/ref/settings/#databases
 
+
+
+
+
+
+
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.sqlite3',
@@ -90,6 +99,7 @@ DATABASES = {
     }
 }
 
+DATABASES["default"] = dj_database_url.parse("postgresql://django_render_gr7i_user:eFwf8iaBG12xFm58gyECDDIcyuus0FQq@dpg-cutd213tq21c73be2td0-a.oregon-postgres.render.com/django_render_gr7i")
 
 # Password validation
 # https://docs.djangoproject.com/en/5.1/ref/settings/#auth-password-validators
