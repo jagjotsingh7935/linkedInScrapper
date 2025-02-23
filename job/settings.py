@@ -29,12 +29,14 @@ SECRET_KEY = 'django-insecure-xis3_2m-17h8@uu*0bcbf&ei5$kxy=awat*j*e125&#qi-i7$j
 DEBUG = True
 
 ALLOWED_HOSTS = ['*',"localhost", "127.0.0.1"]
-CORS_ALLOWED_ORIGINS = ["http://localhost:5173"]
 
+CORS_ALLOWED_ORIGINS = [
+    "http://localhost:5173",
+    "https://linkedinscrapper-f8ak.onrender.com",  # Add your Render backend URL if needed
+]
+
+# Allow credentials (if needed)
 CORS_ALLOW_CREDENTIALS = True
-
-CORS_ALLOW_ALL_ORIGINS = True 
-
 
 
 # Application definition
