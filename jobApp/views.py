@@ -10,7 +10,6 @@ from bs4 import BeautifulSoup
 import math
 from urllib.parse import quote
 
-
 def create_linkedin_url(keywords, location):
     """Create LinkedIn search URL with encoded parameters."""
     encoded_keywords = quote(keywords)
@@ -68,9 +67,9 @@ def get_job_details(job_id, headers):
         'applicant_count': None,
         'level': None,
         'employment_type': None,
-        'industry': None,
         'job_function': None,
-        'salary': None
+        'salary': None,
+        'skills': []  # New field for skills
     }
     
     try:
@@ -142,6 +141,26 @@ def get_job_details(job_id, headers):
             match = re.search(salary_pattern, description_text)
             if match:
                 job_data["salary"] = match.group(0)
+
+        # Skills
+        skills_section = soup.find("section", {"class": "skills-section"})
+        if skills_section:
+            print(f"Found skills section for job ID {job_id}")
+            skills_items = skills_section.find_all("li", {"class": "job-details-skill-match-status-list__skill"})
+            for skill_item in skills_items:
+                skill_name = skill_item.find("span", {"class": "job-details-skill-match-status-list__skill-name"})
+                if skill_name:
+                    job_data["skills"].append(skill_name.text.strip())
+        else:
+            print(f"No skills section found for job ID {job_id}. Checking job description for skills.")
+            # Fallback: Try to extract skills from the job description
+            if job_data.get("job_description"):
+                description_text = job_data["job_description"].lower()
+                # Example: Look for common skill keywords in the description
+                common_skills = ["python", "java", "javascript", "sql", "aws", "machine learning", "data analysis"]
+                for skill in common_skills:
+                    if skill in description_text:
+                        job_data["skills"].append(skill)
 
     except Exception as e:
         print(f"Error processing job ID {job_id}: {e}")
